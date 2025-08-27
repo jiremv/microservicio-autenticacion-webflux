@@ -1,42 +1,65 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  microservicio-autenticacion-webflux
+  Microservicio de Autenticación basado en Spring WebFlux, PostgreSQL, Docker, ECS Fargate.
+  Este template.yaml será utilizado por GitHub Actions como orquestador de:
+    - Infraestructura (Terraform)
+    - Imagen Docker (Dockerfile)
+    - Despliegue a ECR y ECS
 
-  Sample SAM Template for microservicio-autenticacion-webflux
-
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 20
     MemorySize: 512
-
     Tracing: Active
-    # You can add LoggingConfig parameters such as the Logformat, Log Group, and SystemLogLevel or ApplicationLogLevel. Learn more here https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html#sam-function-loggingconfig.
     LoggingConfig:
       LogFormat: JSON
   Api:
     TracingEnabled: true
-Resources:
-  HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Properties:
-      CodeUri: HelloWorldFunction
-      Handler: helloworld.App::handleRequest
-      Runtime: java21
-      Architectures:
-      - x86_64
-      MemorySize: 512
-      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
-        Variables:
-          PARAM1: VALUE
-      Events:
-        HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /hello
-            Method: get
 
+Resources:
+
+  # 🧱 (1) Infraestructura: Terraform
+  # GitHub Actions ejecutará Terraform para crear:
+  # - VPC, Subnets, Security Groups
+  # - ECS Cluster + Service + TaskDefinition
+  # - RDS PostgreSQL (opcional)
+  # - IAM roles
+  #
+  # Terraform se ejecutará en el workflow de GitHub Actions, no aquí directamente.
+
+  # 🐳 (2) Imagen Docker
+  # El Dockerfile se encuentra en la raíz del microservicio
+  # GitHub Actions construirá la imagen y la enviará a Amazon ECR
+
+  # 📦 (3) Repositorio ECR (si se desea crear desde aquí)
+  DockerImageRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: microservicio-autenticacion-webflux
+      ImageTagMutability: MUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: >
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Eliminar imágenes antiguas",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  # 🚀 (4) ECS Cluster y Service serán creados por Terraform
+
+  # 👁️ (5) Monitoreo con Application Insights (opcional)
   ApplicationResourceGroup:
     Type: AWS::ResourceGroups::Group
     Properties:
@@ -44,22 +67,16 @@ Resources:
         Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
       ResourceQuery:
         Type: CLOUDFORMATION_STACK_1_0
+
   ApplicationInsightsMonitoring:
     Type: AWS::ApplicationInsights::Application
     Properties:
       ResourceGroupName:
         Ref: ApplicationResourceGroup
       AutoConfigurationEnabled: 'true'
+
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: API Gateway endpoint URL for Prod stage for Hello World function
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: Hello World Lambda Function ARN
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: Implicit IAM Role created for Hello World function
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+  # 🔍 (Opcional) URL final de ECS (ej: ALB DNS name), definirlo en Terraform
+  AplicacionEndpoint:
+    Description: URL final del microservicio autenticación en ECS
+    Value: "http://alb-o-dns-ecs.autenticacion.com"

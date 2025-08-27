@@ -1,118 +1,160 @@
-# 🛡️ Microservicio de Autenticación - Spring WebFlux
 
-Este microservicio permite registrar usuarios en el sistema mediante un endpoint REST `POST /api/v1/usuarios`, utilizando Spring WebFlux y arquitectura hexagonal. La solución incluye validaciones, manejo de excepciones, trazabilidad con logs y persistencia transaccional.
+# 🛡️ Microservicio de Autenticación con Spring WebFlux + CI/CD AWS
 
----
-
-## 📌 Características principales
-
-- Arquitectura hexagonal (puertos y adaptadores).
-- Spring WebFlux (reactivo y no bloqueante).
-- Persistencia con MongoDB (reactiva).
-- Seguridad basada en JWT.
-- Validación de datos de entrada.
-- Logs trazables con `Slf4j`.
-- Manejo centralizado de excepciones (`GlobalExceptionHandler`).
-- Controladores REST en capa `adapter`.
+Este proyecto implementa un microservicio **reactivo** de autenticación utilizando Spring WebFlux, arquitectura hexagonal, seguridad con JWT, persistencia en PostgreSQL, despliegue en Docker, y orquestación completa con GitHub Actions, Terraform, ECR y ECS.
 
 ---
 
-## 📤 Endpoint principal
+## 📐 Arquitectura General
 
-### Registrar nuevo usuario
-
-**POST** `/api/v1/usuarios`
-
-### Body esperado:
-```json
-{
-  "nombres": "Juan",
-  "apellidos": "Pérez",
-  "fechaNacimiento": "1990-05-15",
-  "direccion": "Av. Siempre Viva 123",
-  "telefono": "987654321",
-  "correoElectronico": "juan.perez@example.com",
-  "salarioBase": 4500
-}
+```txt
+┌────────────┐    HTTP     ┌────────────────────┐    ┌─────────────┐
+│  Cliente   ├───────────►│ API Gateway (ECS)   ├───►│ Spring WebFlux │
+└────────────┘            └────────────────────┘    └─────┬───────┘
+                                                          ▼
+                                                  ┌──────────────┐
+                                                  │ PostgreSQL DB│
+                                                  └──────────────┘
 ```
 
-### Validaciones:
-- `nombres`, `apellidos`, `correoElectronico` y `salarioBase` son obligatorios.
-- `correoElectronico` debe tener formato válido y no existir previamente.
-- `salarioBase` debe ser numérico entre 0 y 15,000,000.
+---
 
-### Respuesta:
-- ✅ **201 Created**: Usuario creado exitosamente.
-- ❌ **400 Bad Request**: Datos inválidos.
-- ❌ **409 Conflict**: El correo ya está registrado.
-- ❌ **500 Internal Server Error**: Error inesperado.
+## ⚙️ Stack Tecnológico
+
+| Capa | Tecnología |
+|------|------------|
+| Backend | Java 21 + Spring WebFlux |
+| Seguridad | JWT (stateless) |
+| Persistencia | PostgreSQL |
+| Infraestructura | Terraform |
+| Contenedores | Docker + AWS ECR |
+| Orquestación | AWS ECS (Fargate) |
+| CI/CD | GitHub Actions + Terraform + ECR/ECS Deploy |
+| API Docs | Swagger (SpringDoc OpenAPI) |
 
 ---
 
-## 🧩 Estructura del proyecto
+## 🔐 Funcionalidades
 
-```
+- Registro de usuarios (`/api/auth/signup`)
+- Login de usuarios (`/api/auth/signin`)
+- Generación y validación de JWT
+- Roles y permisos
+- Validaciones reactivas
+- RouterFunction en lugar de @Controller tradicional
+
+---
+
+## 🧪 Endpoints Principales
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/api/auth/signup` | Registra un nuevo usuario |
+| `POST` | `/api/auth/signin` | Inicia sesión y devuelve el JWT |
+| `GET` | `/api/auth/secure` | Endpoint protegido con JWT |
+
+Swagger UI se puede acceder (si está habilitado) en `/swagger-ui.html`.
+
+---
+
+## 🧱 Estructura del Proyecto (Hexagonal)
+
+```bash
 src/
-├── application/
-│   └── handler/              → Lógica del caso de uso (RegisterUserHandler)
-├── domain/
-│   ├── model/                → Entidades de dominio (Usuario)
-│   └── port/                 → Interfaces de entrada/salida
-├── infrastructure/
-│   ├── adapter/
-│   │   ├── controller/       → Controlador REST (UserController)
-│   │   └── repository/       → Adaptador de MongoRepository
-│   └── config/               → Beans, JWT, Seguridad, etc.
-└── service/
-    └── impl/                 → Servicios de dominio implementados
+├── config/               # Configuración de seguridad y JWT
+├── controller/           # Routers y handlers funcionales
+├── service/              # Lógica de autenticación
+├── repository/           # Interacción con la base de datos (ReactiveCrudRepository)
+├── entities/             # Entidades JPA
+├── dao/                  # DTOs de request y response
+└── SecurityApplication.java # Entry Point
 ```
 
 ---
 
-## 🔐 Seguridad
+## 🐳 Docker
 
-- JWT configurado para autenticación y autorización.
-- `JwtAuthenticationFilter` se encarga de extraer y validar el token JWT.
-- Implementación de `ReactiveUserDetailsService` para autenticación reactiva.
+Dockerfile:
+```dockerfile
+FROM eclipse-temurin:21-jdk-alpine
+COPY target/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "/app.jar"]
+```
 
----
-
-## 💾 Persistencia
-
-- MongoDB usando `ReactiveMongoRepository`.
-- Persistencia transaccional usando `@Transactional`.
-
----
-
-## 🧪 Tests
-
-Incluye pruebas unitarias para validación y lógica de negocio. Puedes correrlas con:
-
+Build:
 ```bash
-./mvnw test
+./mvnw clean package -DskipTests
+docker build -t autenticacion-service .
 ```
 
 ---
 
-## 🚀 Cómo ejecutar el proyecto
+## ☁️ GitHub Actions como Orquestador
 
+El pipeline de GitHub Actions cumple múltiples roles:
+
+- **Construcción de imagen Docker**
+- **Autenticación con AWS ECR**
+- **Push de imagen a ECR**
+- **Aplicación de infraestructura con Terraform** (ECS, Load Balancer, VPC, etc)
+- **Despliegue automático al cluster ECS**
+
+Esto permite manejar ambientes como `dev` y `prod` según ramas.
+
+### 🧩 Flujo de CI/CD
+
+```mermaid
+graph TD;
+  A[Push a main] --> B[GitHub Actions]
+  B --> C[Build Docker]
+  C --> D[Push a ECR]
+  D --> E[Terraform Apply Infra]
+  E --> F[Deploy ECS TaskDefinition]
+  F --> G[Test Endpoints]
+```
+
+---
+
+## 🌍 Infraestructura Terraform
+
+Incluye:
+
+- VPC con subredes públicas y privadas
+- Security Groups
+- RDS PostgreSQL
+- ECR
+- ECS Cluster y Service
+- Application Load Balancer
+- Variables para stage (dev/prod)
+
+Ejemplo para aplicar:
 ```bash
-./mvnw spring-boot:run
+cd terraform
+terraform init
+terraform apply -var="environment=dev"
 ```
 
 ---
 
-## 🛠️ Requisitos
+## 🔎 Pruebas
 
-- Java 17+
-- Maven 3.8+
-- MongoDB en local o remoto
-- (Opcional) Docker para levantar MongoDB localmente
+Se ejecutan pruebas en los endpoints expuestos mediante `curl` o Postman desde GitHub Actions (`/api/auth/signin`, `/api/auth/signup`).
 
 ---
 
-## 🧠 Próximas mejoras
+## 🚀 Despliegue
 
-- Documentar con Swagger/OpenAPI.
-- Agregar colección Postman.
-- Registrar logs en AWS CloudWatch o ELK.
+Una vez ejecutado el pipeline:
+
+- La app estará disponible detrás de un Load Balancer de ECS
+- Base de datos conectada a través de variables inyectadas por ECS (via Secrets Manager o Terraform outputs)
+- Imagen Docker ejecutándose como Fargate task
+
+---
+
+## 👨‍💻 Autor
+
+Proyecto desarrollado como parte de un portafolio profesional para arquitecturas modernas en AWS.
+
+---
+

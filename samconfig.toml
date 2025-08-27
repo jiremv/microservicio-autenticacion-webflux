@@ -5,27 +5,16 @@ version = 0.1
 [default]
 [default.global.parameters]
 stack_name = "microservicio-autenticacion-webflux"
-
-[default.build.parameters]
-cached = true
-parallel = true
-
-[default.validate.parameters]
-lint = true
-
-[default.deploy.parameters]
+resolve_s3 = false
+s3_prefix = "webflux"
+region = "us-east-1"
+confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
+disable_rollback = false
+image_repositories = []
+[default.deploy.parameters]
+stack_name = "webflux-dev"
+resolve_s3 = true
+s3_prefix = "webflux-dev"
 confirm_changeset = true
-resolve_s3 = true
-
-[default.package.parameters]
-resolve_s3 = true
-
-[default.sync.parameters]
-watch = true
-
-[default.local_start_api.parameters]
-warm_containers = "EAGER"
-
-[default.local_start_lambda.parameters]
-warm_containers = "EAGER"
+image_repositories = []
