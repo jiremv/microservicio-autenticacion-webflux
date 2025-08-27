@@ -1,5 +1,5 @@
 package com.pragma.service;
-
+/*
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -10,8 +10,8 @@ import org.springframework.security.web.server.authentication.AuthenticationWebF
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
-@Component
-public class JwtAuthenticationFilter extends AuthenticationWebFilter {
+@Component*/
+public class JwtAuthenticationFilter{/*} extends AuthenticationWebFilter {
     private final JwtService jwtService;
     private final ReactiveUserDetailsService uds;
     public JwtAuthenticationFilter(JwtService jwtService, ReactiveUserDetailsService uds) {
@@ -33,5 +33,5 @@ public class JwtAuthenticationFilter extends AuthenticationWebFilter {
                         .map(userDetails -> new UsernamePasswordAuthenticationToken(
                                 userDetails, null, userDetails.getAuthorities()
                         )));
-    }
+    }*/
 }

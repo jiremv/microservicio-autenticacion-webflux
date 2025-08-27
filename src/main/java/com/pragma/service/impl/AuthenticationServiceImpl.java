@@ -21,7 +21,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final JwtService jwtService;
     @Override
     public Mono<JwtAuthenticationResponse> signup(SignUpRequest request) {
-        return userRepository.findByEmail(request.getEmail())
+        return userRepository.findByCorreoElectronico(request.getEmail())
                 .flatMap(existing -> Mono.<JwtAuthenticationResponse>error(new RuntimeException("Usuario ya registrado con ese email")))
                 .switchIfEmpty(
                         Mono.defer(() -> {
@@ -41,7 +41,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
     @Override
     public Mono<JwtAuthenticationResponse> signin(SigninRequest request) {
-        return userRepository.findByEmail(request.getEmail())
+        return userRepository.findByCorreoElectronico(request.getEmail())
                 .switchIfEmpty(Mono.error(new RuntimeException("Usuario no encontrado")))
                 .flatMap(user -> {
                     if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {

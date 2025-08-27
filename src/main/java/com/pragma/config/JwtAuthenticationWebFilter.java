@@ -1,23 +1,16 @@
 package com.pragma.config;
 
 import com.pragma.service.JwtService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.web.server.authentication.ServerAuthenticationConverter;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
-import org.springframework.security.web.server.context.ServerSecurityContextRepository;
-import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
-
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
-import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.core.Authentication;
 
 //@RequiredArgsConstructor
@@ -49,7 +42,6 @@ public class JwtAuthenticationWebFilter extends AuthenticationWebFilter {
                 return Mono.empty();
             }
         });
-
         setSecurityContextRepository(NoOpServerSecurityContextRepository.getInstance());
     }
 

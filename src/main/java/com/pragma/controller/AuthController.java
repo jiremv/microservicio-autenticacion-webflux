@@ -29,7 +29,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public Mono<String> login(@RequestBody AuthRequest request) {
-        return userRepository.findByEmail(request.getEmail())
+        return userRepository.findByCorreoElectronico(request.getEmail())
                 .filter(user -> passwordEncoder.matches(request.getPassword(), user.getPassword()))
                 .map(user -> jwtService.generateToken(user.getCorreoElectronico()));
     }

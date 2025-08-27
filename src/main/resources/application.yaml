@@ -6,7 +6,7 @@ spring:
     name: security-service
 
   r2dbc:
-    url: r2dbc:postgresql://database-1..us-east-1.rds.amazonaws.com:5432/postgres
+    url: r2dbc:postgresql://database-1.ck7yyhzddoi1.us-east-1.rds.amazonaws.com:5432/postgres
     username: postgres
     password: CelularNOKIA$1
     pool:

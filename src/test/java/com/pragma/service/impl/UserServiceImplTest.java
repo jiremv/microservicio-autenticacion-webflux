@@ -32,9 +32,9 @@ class UserServiceImplTest {
     @Test
     void testFindByEmail() {
         User user = User.builder().email("test@pragma.com").build();
-        when(userRepository.findByEmail("test@pragma.com")).thenReturn(Mono.just(user));
+        when(userRepository.findByCorreoElectronico("test@pragma.com")).thenReturn(Mono.just(user));
 
-        Mono<User> result = userService.findByEmail("test@pragma.com");
+        Mono<User> result = userService.findByCorreoElectronico("test@pragma.com");
 
         StepVerifier.create(result)
                 .expectNext(user)
@@ -44,7 +44,7 @@ class UserServiceImplTest {
     @Test
     void testFindByUsernameSuccess() {
         User user = User.builder().email("usuario@pragma.com").build();
-        when(userRepository.findByEmail("usuario@pragma.com")).thenReturn(Mono.just(user));
+        when(userRepository.findByCorreoElectronico("usuario@pragma.com")).thenReturn(Mono.just(user));
 
         Mono<UserDetails> result = userService.findByUsername("usuario@pragma.com");
 
@@ -55,7 +55,7 @@ class UserServiceImplTest {
 
     @Test
     void testFindByUsernameNotFound() {
-        when(userRepository.findByEmail(anyString())).thenReturn(Mono.empty());
+        when(userRepository.findByCorreoElectronico(anyString())).thenReturn(Mono.empty());
 
         Mono<UserDetails> result = userService.findByUsername("notfound@pragma.com");
 
