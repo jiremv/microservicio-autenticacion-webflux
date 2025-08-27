@@ -1,0 +1,23 @@
+version = 0.1
+[default.pipeline_bootstrap.parameters]
+oidc_provider_url = "https://token.actions.githubusercontent.com"
+oidc_client_id = "sts.amazonaws.com"
+github_org = "jiremv"
+github_repo = "microservicio-autenticacion-webflux"
+deployment_branch = "main"
+oidc_provider = "github-actions"
+permissions_provider = "OpenID Connect (OIDC)"
+
+[microservicio-autenticacion-webflux-dev.pipeline_bootstrap.parameters]
+pipeline_execution_role = "arn:aws:iam::545200407638:role/aws-sam-cli-managed-microserv-PipelineExecutionRole-igE59DqYohO8"
+cloudformation_execution_role = "arn:aws:iam::545200407638:role/aws-sam-cli-managed-micro-CloudFormationExecutionRo-y2dbHSg1g46K"
+artifacts_bucket = "aws-sam-cli-managed-microservicio--artifactsbucket-dpoqkwxn4jcm"
+image_repository = ""
+region = "us-east-1"
+
+[microservicio-autenticacion-webflux-prod.pipeline_bootstrap.parameters]
+pipeline_execution_role = "arn:aws:iam::545200407638:role/aws-sam-cli-managed-microserv-PipelineExecutionRole-I4cSJEA68Ztp"
+cloudformation_execution_role = "arn:aws:iam::545200407638:role/aws-sam-cli-managed-micro-CloudFormationExecutionRo-Yiz3Kuo0Nvtq"
+artifacts_bucket = "aws-sam-cli-managed-microservicio--artifactsbucket-kxtf9gegod4u"
+image_repository = ""
+region = "us-east-2"

@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: security-service
+
+  r2dbc:
+    url: r2dbc:postgresql://database-1..us-east-1.rds.amazonaws.com:5432/postgres
+    username: postgres
+    password: CelularNOKIA$1
+    pool:
+      enabled: true
+      initial-size: 5
+      max-size: 20
+
+  jackson:
+    serialization:
+      INDENT_OUTPUT: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework.security: DEBUG
+
+app:
+  jwt:
+    secret: TuSecretoSuperSeguroJWT2025
+    expiration: 3600000 # en milisegundos (1 hora)

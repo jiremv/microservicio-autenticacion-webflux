@@ -1,0 +1,23 @@
+package com.pragma.service;
+
+import com.pragma.repository.UserRepository; // Repositorio propio ✔️
+import org.springframework.security.core.userdetails.ReactiveUserDetailsService; // Interfaz Spring Security ✔️
+import org.springframework.security.core.userdetails.UserDetails; // Tipo de retorno ✔️
+import org.springframework.stereotype.Service; // Anotación para el bean ✔️
+import reactor.core.publisher.Mono; // Para programación reactiva ✔️
+@Service
+public class MyReactiveUserDetailsService implements ReactiveUserDetailsService {
+    private final UserRepository userRepository;
+    public MyReactiveUserDetailsService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+    @Override
+    public Mono<UserDetails> findByUsername(String username) {
+        return userRepository.findByEmail(username)
+                .map(user -> org.springframework.security.core.userdetails.User
+                        .withUsername(user.getCorreoElectronico())
+                        .password(user.getPassword())
+                        .authorities(user.getRol().name()) // necesitas mapear el rol a String
+                        .build());
+    }
+}
