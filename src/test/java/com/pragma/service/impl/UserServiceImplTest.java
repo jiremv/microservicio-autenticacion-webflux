@@ -31,7 +31,7 @@ class UserServiceImplTest {
 
     @Test
     void testFindByEmail() {
-        User user = User.builder().email("test@pragma.com").build();
+        User user = User.builder().correoElectronico("test@pragma.com").build();
         when(userRepository.findByCorreoElectronico("test@pragma.com")).thenReturn(Mono.just(user));
 
         Mono<User> result = userService.findByCorreoElectronico("test@pragma.com");
@@ -43,7 +43,7 @@ class UserServiceImplTest {
 
     @Test
     void testFindByUsernameSuccess() {
-        User user = User.builder().email("usuario@pragma.com").build();
+        User user = User.builder().correoElectronico("usuario@pragma.com").build();
         when(userRepository.findByCorreoElectronico("usuario@pragma.com")).thenReturn(Mono.just(user));
 
         Mono<UserDetails> result = userService.findByUsername("usuario@pragma.com");

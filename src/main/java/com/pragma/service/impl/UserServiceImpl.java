@@ -15,8 +15,8 @@ public class UserServiceImpl {/*implements UserService {
     @Autowired
     private final UserRepository userRepository;
     @Override
-    public Mono<User> findByCorreoElectronico(String email) {
-        return userRepository.findByCorreoElectronico(email);
+    public Mono<User> findByCorreoElectronico(String correoElectronico) {
+        return userRepository.findByCorreoElectronico(correoElectronico);
     }
     @Override
     public Mono<UserDetails> findByUsername(String username) {

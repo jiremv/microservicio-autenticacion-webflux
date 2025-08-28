@@ -1,6 +1,6 @@
 package com.pragma.controller;
 
-import com.pragma.dto.AuthRequest;
+import com.pragma.dto.UsuarioRequest;
 import com.pragma.entities.User;
 import com.pragma.repository.UserRepository;
 import com.pragma.service.JwtService;
@@ -28,8 +28,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public Mono<String> login(@RequestBody AuthRequest request) {
-        return userRepository.findByCorreoElectronico(request.getEmail())
+    public Mono<String> login(@RequestBody UsuarioRequest request) {
+        return userRepository.findByCorreoElectronico(request.getCorreoElectronico())
                 .filter(user -> passwordEncoder.matches(request.getPassword(), user.getPassword()))
                 .map(user -> jwtService.generateToken(user.getCorreoElectronico()));
     }

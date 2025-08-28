@@ -29,7 +29,7 @@ class JwtServiceImplTest {
 
         user = User.builder()
                 .id(1)
-                .email("test@pragma.com")
+                .correoElectronico("test@pragma.com")
                 .password("1234")
                 .role(Role.USER)
                 .build();
@@ -57,7 +57,7 @@ class JwtServiceImplTest {
     void testIsTokenValidFalseDifferentUser() {
         String token = jwtService.generateToken(user);
 
-        User fakeUser = User.builder().email("otro@correo.com").build();
+        User fakeUser = User.builder().correoElectronico("otro@correo.com").build();
 
         StepVerifier.create(jwtService.isTokenValid(token, fakeUser))
                 .expectNext(false)
