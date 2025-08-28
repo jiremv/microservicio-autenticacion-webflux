@@ -154,7 +154,7 @@ Una vez ejecutado el pipeline:
 
 ## 👨‍💻 Autor
 
-Proyecto desarrollado como parte de un portafolio profesional para arquitecturas modernas en AWS.
+Paul Rivera
 
 ---
 

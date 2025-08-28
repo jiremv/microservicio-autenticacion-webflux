@@ -1,72 +1,49 @@
 package com.pragma.config;
 
-import com.pragma.service.JwtService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
-import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
-
 import java.util.List;
-
 @Configuration
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity
 public class SecurityConfig {
-
-    private final JwtService jwtService;
     private final ReactiveUserDetailsService userDetailsService;
-
     public SecurityConfig(
-            JwtService jwtService,
             @Qualifier("myReactiveUserDetailsService") ReactiveUserDetailsService userDetailsService
     ) {
-        this.jwtService = jwtService;
+        //this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
-    }
-
-    /**
-     * Registra el filtro JWT como bean (mejor para pruebas y para no “new” inline).
-     */
-    @Bean
-    public JwtAuthenticationWebFilter jwtAuthenticationWebFilter() {
-        return new JwtAuthenticationWebFilter(jwtService, userDetailsService);
     }
 
     /**
      * Cadena de filtros de seguridad.
      */
     @Bean
-    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http,
-                                                         JwtAuthenticationWebFilter jwtAuthFilter) {
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http
+            //,JwtAuthenticationWebFilter jwtAuthFilter
+    ) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .cors(cors -> {}) // usar el bean CorsConfigurationSource de abajo
                 .authorizeExchange(exchange -> exchange
-                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/usuarios").permitAll() // pública
-                        .pathMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
-                        .pathMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .pathMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .anyExchange().authenticated()
+                        //.anyExchange().authenticated()
                 )
                 // Inserta el filtro JWT en el lugar correcto
-                .addFilterAt(jwtAuthFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 // (Opcional) Manejo de errores de auth/acc
                 .exceptionHandling(spec -> spec
                         .authenticationEntryPoint((exchange, ex) -> {
@@ -90,7 +67,7 @@ public class SecurityConfig {
         cfg.setAllowedOrigins(List.of(
                 "http://localhost:4200",
                 "http://localhost:8080",     // swagger-ui si sirve estático
-                "https://tu-dominio.com"     // PRODUCCIÓN: ajusta a tu frontend
+                "https://mi-dominio.com"     // PRODUCCIÓN: ajusta a tu frontend
         ));
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));

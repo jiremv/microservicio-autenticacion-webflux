@@ -10,21 +10,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-
 import java.net.URI;
-
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/usuarios")
 @RequiredArgsConstructor
 public class UsuarioController {
-
     private final RegistrarUsuarioUseCase useCase;
-
     @PostMapping
     public Mono<ResponseEntity<UsuarioResponse>> crear(@Valid @RequestBody UsuarioRequest req) {
         log.info("[UsuarioController] POST /api/v1/usuarios email={}", req.getCorreoElectronico());
-
         // Mapeo DTO -> entidad
         User entity = User.builder()
                 .nombres(req.getNombres())

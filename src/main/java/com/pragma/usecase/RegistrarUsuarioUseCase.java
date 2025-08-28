@@ -1,5 +1,7 @@
 package com.pragma.usecase;
 
+import com.pragma.dto.UsuarioRequest;
+import com.pragma.dto.UsuarioResponse;
 import com.pragma.entities.Role;
 import com.pragma.entities.User;
 import com.pragma.repository.UserRepository;
@@ -62,5 +64,45 @@ public class RegistrarUsuarioUseCase {
                             .doOnError(e -> log.error("[RegistrarUsuario] error: {}", e.getMessage(), e));
                 }))
                 .as(tx::transactional);
+    }
+
+    public Mono<UsuarioResponse> registrar(UsuarioRequest req) {
+        // Mapear DTO -> entidad (password en texto plano aquí; se encripta en registrar(User))
+        User nuevo = User.builder()
+                .nombres(req.getNombres())
+                .apellidos(req.getApellidos())
+                //.tipoDocumento(req.getTipoDocumento())
+                //.numeroDocumento(req.getNumeroDocumento())
+                .fechaNacimiento(req.getFechaNacimiento())
+                .direccion(req.getDireccion())
+                .telefono(req.getTelefono())
+                .correoElectronico(req.getCorreoElectronico())
+                .salarioBase(req.getSalarioBase())
+                .password(req.getPassword())
+                // si el request no trae rol, el método registrar(User) ya pone Role.USER por defecto
+                //.rol(req.getRol())
+                .estado(Boolean.TRUE)
+                .build();
+
+        // Reusar tu lógica existente y mapear Entidad -> Response
+        return ejecutar(nuevo).map(this::toResponse);
+    }
+
+    private UsuarioResponse toResponse(User u) {
+        UsuarioResponse resp = new UsuarioResponse();
+        resp.setId(u.getId());
+        resp.setNombres(u.getNombres());
+        resp.setApellidos(u.getApellidos());
+        //resp.setTipoDocumento(u.getTipoDocumento());
+        //resp.setNumeroDocumento(u.getNumeroDocumento());
+        resp.setFechaNacimiento(u.getFechaNacimiento());
+        resp.setDireccion(u.getDireccion());
+        resp.setTelefono(u.getTelefono());
+        resp.setCorreoElectronico(u.getCorreoElectronico());
+        resp.setSalarioBase(u.getSalarioBase());
+        resp.setRol(u.getRol().name());
+        resp.setEstado(u.getEstado());
+        resp.setFechaCreacion(u.getFechaCreacion());
+        return resp;
     }
 }
