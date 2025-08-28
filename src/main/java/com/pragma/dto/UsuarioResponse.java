@@ -2,6 +2,7 @@ package com.pragma.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -15,7 +16,7 @@ public class UsuarioResponse {
     private String direccion;
     private String telefono;
     private String correoElectronico;
-    private Double salarioBase;
+    private BigDecimal salarioBase;
     private String rol;              // texto conveniente para el cliente
     private Boolean estado;
     private LocalDateTime fechaCreacion;

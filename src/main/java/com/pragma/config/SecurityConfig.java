@@ -59,7 +59,7 @@ public class SecurityConfig {
                 .cors(cors -> {}) // usar el bean CorsConfigurationSource de abajo
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .pathMatchers(HttpMethod.POST, "/api/v1/usuarios").permitAll() // <- público
+                        .pathMatchers(HttpMethod.POST, "/api/v1/usuarios").permitAll() // pública
                         .pathMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
                         .pathMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .pathMatchers("/actuator/health", "/actuator/info").permitAll()

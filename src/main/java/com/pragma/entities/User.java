@@ -1,11 +1,11 @@
 package com.pragma.entities;
 
-///import jakarta.persistence.EnumType;
-///import jakarta.persistence.Enumerated;
+import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
-import lombok.*;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -14,25 +14,34 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("usuarios") // nombre de la tabla en PostgreSQL
+@Table("usuarios")
 public class User {
 
     @Id
-    private UUID id;
+    private UUID id; // puedes no setearlo para que lo genere el DB con DEFAULT
 
     private String nombres;
     private String apellidos;
+
+    @Column("fecha_nacimiento")
     private LocalDate fechaNacimiento;
+
     private String direccion;
     private String telefono;
-    //@Column(name = "correo_electronico", unique = true)
+
     @Column("correo_electronico")
     private String correoElectronico;
-    private Double salarioBase;
-    private String password;
-    //@Enumerated(EnumType.STRING)
+
+    @Column("salario_base")
+    private BigDecimal salarioBase; // <-- mejor que Double para NUMERIC(10,2)
+
+    private String password; // columna es 'password', ya coincide
+
     @Column("rol")
-    private Role rol;
+    private Role rol; // si tu enum se mapea a texto (ok con VARCHAR)
+
     private Boolean estado;
+
+    @Column("fecha_creacion")
     private LocalDateTime fechaCreacion;
 }

@@ -1,5 +1,5 @@
 package com.pragma.controller;
-
+/*
 import com.pragma.dao.request.SignUpRequest;
 import com.pragma.dao.request.SigninRequest;
 import com.pragma.dao.response.JwtAuthenticationResponse;
@@ -13,9 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/api/v1/auth")
-@RequiredArgsConstructor
+@RequiredArgsConstructor*/
 public class AuthenticationController {
-
+/*
     private final AuthenticationService authenticationService;
 
     @PostMapping("/signup")
@@ -28,5 +28,5 @@ public class AuthenticationController {
     public Mono<ResponseEntity<JwtAuthenticationResponse>> signin(@RequestBody SigninRequest request) {
         return authenticationService.signin(request)
                 .map(ResponseEntity::ok);
-    }
+    }*/
 }

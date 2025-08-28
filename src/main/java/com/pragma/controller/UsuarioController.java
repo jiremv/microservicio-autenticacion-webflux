@@ -25,6 +25,7 @@ public class UsuarioController {
     public Mono<ResponseEntity<UsuarioResponse>> crear(@Valid @RequestBody UsuarioRequest req) {
         log.info("[UsuarioController] POST /api/v1/usuarios email={}", req.getCorreoElectronico());
 
+        // Mapeo DTO -> entidad
         User entity = User.builder()
                 .nombres(req.getNombres())
                 .apellidos(req.getApellidos())
@@ -33,9 +34,10 @@ public class UsuarioController {
                 .telefono(req.getTelefono())
                 .correoElectronico(req.getCorreoElectronico())
                 .salarioBase(req.getSalarioBase())
+                .password(req.getPassword()) // si vino, se hashea en el use case
                 .build();
 
-        return null;/* useCase.ejecutar(entity)
+        return useCase.ejecutar(entity)
                 .map(saved -> {
                     UsuarioResponse r = new UsuarioResponse();
                     r.setId(saved.getId());
@@ -53,6 +55,6 @@ public class UsuarioController {
                     return ResponseEntity
                             .created(URI.create("/api/v1/usuarios/" + saved.getId()))
                             .body(r);
-                });*/
+                });
     }
 }
