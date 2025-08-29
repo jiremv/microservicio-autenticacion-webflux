@@ -17,7 +17,15 @@ import java.net.URI;
 @RequiredArgsConstructor
 public class UsuarioController {
     private final RegistrarUsuarioUseCase useCase;
+
     @PostMapping
+    public Mono<ResponseEntity<UsuarioResponse>> crear(@Valid @RequestBody UsuarioRequest req) {
+        return useCase.registrar(req)
+                .map(resp -> ResponseEntity
+                        .created(URI.create("/api/v1/usuarios/" + resp.getId()))
+                        .body(resp));
+    }
+    /*@PostMapping
     public Mono<ResponseEntity<UsuarioResponse>> crear(@Valid @RequestBody UsuarioRequest req) {
         log.info("[UsuarioController] POST /api/v1/usuarios email={}", req.getCorreoElectronico());
         // Mapeo DTO -> entidad
@@ -51,5 +59,5 @@ public class UsuarioController {
                             .created(URI.create("/api/v1/usuarios/" + saved.getId()))
                             .body(r);
                 });
-    }
+    }*/
 }

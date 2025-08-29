@@ -15,7 +15,6 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -71,8 +70,6 @@ public class RegistrarUsuarioUseCase {
         User nuevo = User.builder()
                 .nombres(req.getNombres())
                 .apellidos(req.getApellidos())
-                //.tipoDocumento(req.getTipoDocumento())
-                //.numeroDocumento(req.getNumeroDocumento())
                 .fechaNacimiento(req.getFechaNacimiento())
                 .direccion(req.getDireccion())
                 .telefono(req.getTelefono())
@@ -93,8 +90,6 @@ public class RegistrarUsuarioUseCase {
         resp.setId(u.getId());
         resp.setNombres(u.getNombres());
         resp.setApellidos(u.getApellidos());
-        //resp.setTipoDocumento(u.getTipoDocumento());
-        //resp.setNumeroDocumento(u.getNumeroDocumento());
         resp.setFechaNacimiento(u.getFechaNacimiento());
         resp.setDireccion(u.getDireccion());
         resp.setTelefono(u.getTelefono());
