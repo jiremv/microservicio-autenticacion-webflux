@@ -1,13 +1,16 @@
 package com.pragma.dto;
 
-import lombok.Data;
-
+import com.pragma.entities.Role;
+import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class UsuarioResponse {
     private UUID id;
     private String nombres;
@@ -17,7 +20,7 @@ public class UsuarioResponse {
     private String telefono;
     private String correoElectronico;
     private BigDecimal salarioBase;
-    private String rol;              // texto conveniente para el cliente
+    private Role rol;
     private Boolean estado;
     private LocalDateTime fechaCreacion;
 }

@@ -12,19 +12,17 @@ import reactor.core.publisher.Mono;
 import java.net.URI;
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/usuarios")
+@RequestMapping
 @RequiredArgsConstructor
 public class UsuarioController {
 
     private final RegistrarUsuarioUseCase useCase;
-
-    @PostMapping
-    public Mono<ResponseEntity<UsuarioResponse>> crear(@RequestBody Mono<@Valid UsuarioRequest> body) {
-        return body
-                .flatMap(useCase::registrar)
-                .map(resp -> ResponseEntity
-                        .created(URI.create("/api/v1/usuarios/" + resp.getId()))
-                        .body(resp));
+    @PostMapping("/api/v1/usuarios")
+    public Mono<ResponseEntity<Void>> crear(@Valid @RequestBody UsuarioRequest req) {
+        return useCase.registrar(req)
+                .map(r -> ResponseEntity
+                        .created(URI.create("/api/v1/usuarios/" + r.getId()))
+                        .build());
     }
 }
 
