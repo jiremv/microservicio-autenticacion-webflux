@@ -1,5 +1,6 @@
 package com.pragma.usecase;
 
+import com.pragma.domain.exception.EmailAlreadyExistsException;
 import com.pragma.dto.UsuarioRequest;
 import com.pragma.dto.UsuarioResponse;
 import com.pragma.entities.Role;
@@ -37,6 +38,8 @@ class RegistrarUsuarioUseCaseMapperExtraTest {
     void setup() {
         lenient().when(tx.transactional(any(Mono.class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(tx.transactional(any(Flux.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Evita NPE cuando no se stubee explícitamente en un test:
+        lenient().when(userRepository.findByCorreoElectronico(any())).thenReturn(Mono.empty());
     }
 
     private UsuarioRequest req(String email) {
@@ -100,8 +103,11 @@ class RegistrarUsuarioUseCaseMapperExtraTest {
                 .thenReturn(Mono.just(User.builder().id(UUID.randomUUID()).correoElectronico(req.getCorreoElectronico()).build()));
 
         StepVerifier.create(useCase.registrar(req))
-                .expectErrorMatches(ex -> ex instanceof IllegalArgumentException
-                        && ex.getMessage().toLowerCase().contains("correo"))
+                .expectErrorSatisfies(ex -> {
+                assertThat(ex).isInstanceOf(EmailAlreadyExistsException.class);
+                // Evita matchear mensaje exacto (acentos en consola). Si quieres:
+                    // assertThat(ex.getMessage().toLowerCase()).contains("registrado");
+                })
                 .verify();
 
         verify(userRepository, never()).save(any());

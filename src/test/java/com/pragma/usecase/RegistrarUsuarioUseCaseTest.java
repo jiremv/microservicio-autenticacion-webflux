@@ -28,38 +28,26 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
 class RegistrarUsuarioUseCaseTest {
-
     @Mock
     UserRepository userRepository;
-
-    // No lo “mockeamos”: asignaremos un fake en setUp()
+    @Mock
     TransactionalOperator tx;
-
     @Mock
     PasswordEncoder passwordEncoder;
-
     @InjectMocks
     RegistrarUsuarioUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        // Fake TransactionalOperator que hace “passthrough”:
-        // - execute(...) devuelve directamente lo que produzca el callback
-        // - transactional(pub) devuelve el mismo publisher
-        tx = new TransactionalOperator() {
-            @Override
-            public <T> Flux<T> execute(TransactionCallback<T> action) {
-                // status no es usado en el caso de prueba; pasamos null
-                return (Flux<T>) action.doInTransaction(null);
-            }
-        };
-
-        // Reinyectamos el operador en el UseCase (porque @InjectMocks no puede
-        // adivinar nuestro fake recién creado arriba)
+        // Passthrough transaccional para Mono/Flux
+        lenient().when(tx.transactional(any(Mono.class))).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(tx.transactional(any(Flux.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Reinyecta por si @InjectMocks no alcanzó
         useCase = new RegistrarUsuarioUseCase(userRepository, tx, passwordEncoder);
+        //evita NPE en tests que no stubean findBy... explícitamente
+        lenient().when(userRepository.findByCorreoElectronico(any())).thenReturn(Mono.empty());
     }
 
     private User baseUser() {

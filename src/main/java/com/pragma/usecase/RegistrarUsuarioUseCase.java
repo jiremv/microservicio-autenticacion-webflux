@@ -4,6 +4,7 @@ import com.pragma.dto.UsuarioRequest;
 import com.pragma.dto.UsuarioResponse;
 import com.pragma.entities.Role;
 import com.pragma.entities.User;
+import com.pragma.domain.exception.EmailAlreadyExistsException;
 import com.pragma.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,10 +12,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
-import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.math.BigDecimal;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -24,80 +27,120 @@ public class RegistrarUsuarioUseCase {
     private final TransactionalOperator tx;
     private final PasswordEncoder passwordEncoder;
 
-    public Mono<User> ejecutar(User nuevo) {
-        log.info("[RegistrarUsuario] inicio email={}", nuevo.getCorreoElectronico());
+    // --- API principal: usada por el Controller ---
+    public Mono<UsuarioResponse> registrar(UsuarioRequest req) {
+        final String email = normalize(req.getCorreoElectronico());
+        log.info("[RegistrarUsuario] inicio email={}", email);
 
-        // Validaciones mínimas (además de las @Valid en el DTO)
-        if (nuevo.getNombres() == null || nuevo.getNombres().isBlank()
-                || nuevo.getApellidos() == null || nuevo.getApellidos().isBlank()
-                || nuevo.getCorreoElectronico() == null || nuevo.getCorreoElectronico().isBlank()) {
-            return Mono.error(new IllegalArgumentException("Campos obligatorios vacíos"));
-        }
-        if (nuevo.getSalarioBase() == null
-                || nuevo.getSalarioBase().compareTo(BigDecimal.ZERO) < 0
-                || nuevo.getSalarioBase().compareTo(new BigDecimal("15000000")) > 0) {
-            return Mono.error(new IllegalArgumentException("salario_base fuera de rango"));
-        }
-        if (nuevo.getPassword() == null || nuevo.getPassword().isBlank()) {
-            return Mono.error(new IllegalArgumentException("password es obligatorio"));
-        }
+        User nuevo = mapToEntity(req, email);
+        aplicarDefaults(nuevo);
 
-        return userRepository.findByCorreoElectronico(nuevo.getCorreoElectronico())
-                .flatMap(existing -> {
-                    log.warn("[RegistrarUsuario] duplicado email={}", nuevo.getCorreoElectronico());
-                    return Mono.<User>error(new IllegalArgumentException("El correo electrónico ya está registrado"));
-                })
-                .switchIfEmpty(Mono.defer(() -> {
-                    // Deja que el DB genere el id/rol/estado/fecha_creacion vía DEFAULT,
-                    // o si prefieres fijarlos en Java, descomenta:
-                    // if (nuevo.getId() == null) nuevo.setId(UUID.randomUUID());
-                    if (nuevo.getRol() == null) nuevo.setRol(Role.USER);
-                    if (nuevo.getEstado() == null) nuevo.setEstado(Boolean.TRUE);
-                    if (nuevo.getFechaCreacion() == null) nuevo.setFechaCreacion(LocalDateTime.now());
-
-                    // Hash de password
-                    nuevo.setPassword(passwordEncoder.encode(nuevo.getPassword()));
-
-                    return userRepository.save(nuevo)
-                            .doOnSuccess(u -> log.info("[RegistrarUsuario] OK id={}", u.getId()))
-                            .doOnError(e -> log.error("[RegistrarUsuario] error: {}", e.getMessage(), e));
-                }))
+        // (Opcional pero consistente) Validar también aquí
+        return validarNegocio(nuevo)
+                .flatMap(this::pipelineGuardar)
+                .map(this::mapToResponse)
                 .as(tx::transactional);
     }
 
-    public Mono<UsuarioResponse> registrar(UsuarioRequest req) {
-        // Mapear DTO -> entidad (password en texto plano aquí; se encripta en registrar(User))
-        User nuevo = User.builder()
+    // --- Bridge que tus tests llaman directamente ---
+    @Deprecated
+    public Mono<User> ejecutar(User nuevo) {
+        final String email = normalize(nuevo.getCorreoElectronico());
+        nuevo.setCorreoElectronico(email);
+        log.info("[RegistrarUsuario] inicio email={}", email);
+
+        aplicarDefaults(nuevo);
+
+        // Los tests esperan IllegalArgumentException en inválidos
+        return validarNegocio(nuevo)
+                .flatMap(this::pipelineGuardar)
+                .as(tx::transactional);
+    }
+
+    // --- Validaciones de negocio que esperan los tests ---
+    private Mono<User> validarNegocio(User u) {
+        if (u.getNombres() == null || u.getNombres().isBlank()
+                || u.getApellidos() == null || u.getApellidos().isBlank()
+                || u.getCorreoElectronico() == null || u.getCorreoElectronico().isBlank()) {
+            return Mono.error(new IllegalArgumentException("Campos obligatorios vacíos"));
+        }
+        if (u.getSalarioBase() == null
+                || u.getSalarioBase().compareTo(BigDecimal.ZERO) < 0
+                || u.getSalarioBase().compareTo(new BigDecimal("15000000")) > 0) {
+            return Mono.error(new IllegalArgumentException("salario_base fuera de rango"));
+        }
+        if (u.getPassword() == null || u.getPassword().isBlank()) {
+            return Mono.error(new IllegalArgumentException("password es obligatorio"));
+        }
+        return Mono.just(u);
+    }
+
+    // --- Pipeline compartido ---
+    private Mono<User> pipelineGuardar(User nuevo) {
+        final String email = nuevo.getCorreoElectronico();
+
+        return userRepository.findByCorreoElectronico(email)
+                .hasElement()
+                .flatMap(exists -> {
+                    if (exists) {
+                        log.warn("[RegistrarUsuario] duplicado email={}", email);
+                        return Mono.error(new EmailAlreadyExistsException(
+                                "El correo electrónico ya está registrado", "email"));
+                    }
+                    return Mono.fromCallable(() -> passwordEncoder.encode(nuevo.getPassword()))
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .map(hash -> { nuevo.setPassword(hash); return nuevo; })
+                            .flatMap(userRepository::save)
+                            .doOnSuccess(u -> {
+                                if (u != null) {
+                                    log.info("[RegistrarUsuario] OK id={}", u.getId());
+                                } else {
+                                    log.error("[RegistrarUsuario] save devolvió null");
+                                }
+                            });
+                });
+    }
+
+    // --- Helpers ---
+    private void aplicarDefaults(User u) {
+        if (u.getRol() == null) u.setRol(Role.USER);
+        if (u.getEstado() == null) u.setEstado(Boolean.TRUE);
+        if (u.getFechaCreacion() == null) u.setFechaCreacion(LocalDateTime.now());
+    }
+
+    private String normalize(String s) {
+        if (s == null) return null;
+        return Normalizer.normalize(s, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase();
+    }
+
+    private User mapToEntity(UsuarioRequest req, String emailNormalizado) {
+        return User.builder()
                 .nombres(req.getNombres())
                 .apellidos(req.getApellidos())
                 .fechaNacimiento(req.getFechaNacimiento())
                 .direccion(req.getDireccion())
                 .telefono(req.getTelefono())
-                .correoElectronico(req.getCorreoElectronico())
+                .correoElectronico(emailNormalizado)
                 .salarioBase(req.getSalarioBase())
                 .password(req.getPassword())
-                // si el request no trae rol, el método registrar(User) ya pone Role.USER por defecto
-                //.rol(req.getRol())
-                .estado(Boolean.TRUE)
                 .build();
-
-        // Reusar tu lógica existente y mapear Entidad -> Response
-        return ejecutar(nuevo).map(this::toResponse);
     }
 
-    private UsuarioResponse toResponse(User u) {
-        UsuarioResponse resp = new UsuarioResponse();
-        resp.setId(u.getId());
-        resp.setNombres(u.getNombres());
-        resp.setApellidos(u.getApellidos());
-        resp.setFechaNacimiento(u.getFechaNacimiento());
-        resp.setDireccion(u.getDireccion());
-        resp.setTelefono(u.getTelefono());
-        resp.setCorreoElectronico(u.getCorreoElectronico());
-        resp.setSalarioBase(u.getSalarioBase());
-        resp.setRol(u.getRol().name());
-        resp.setEstado(u.getEstado());
-        resp.setFechaCreacion(u.getFechaCreacion());
-        return resp;
+    private UsuarioResponse mapToResponse(User u) {
+        UsuarioResponse r = new UsuarioResponse();
+        r.setId(u.getId());
+        r.setNombres(u.getNombres());
+        r.setApellidos(u.getApellidos());
+        r.setFechaNacimiento(u.getFechaNacimiento());
+        r.setDireccion(u.getDireccion());
+        r.setTelefono(u.getTelefono());
+        r.setCorreoElectronico(u.getCorreoElectronico());
+        r.setSalarioBase(u.getSalarioBase());
+        r.setRol(u.getRol().name());
+        r.setEstado(u.getEstado());
+        r.setFechaCreacion(u.getFechaCreacion());
+        return r;
     }
 }

@@ -1,5 +1,6 @@
 package com.pragma.usecase;
 
+import com.pragma.domain.exception.EmailAlreadyExistsException;
 import com.pragma.dto.UsuarioRequest;
 import com.pragma.dto.UsuarioResponse;
 import com.pragma.entities.Role;
@@ -38,6 +39,8 @@ class RegistrarUsuarioUseCaseMapperTest {
         lenient().when(tx.transactional(any(Flux.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
         // (No hace falta stubear execute(..) para estos tests)
+        // Evita NPE por defecto en tests que no stubean explícitamente:
+        lenient().when(userRepository.findByCorreoElectronico(any())).thenReturn(Mono.empty());
     }
 
     private UsuarioRequest request() {
@@ -114,8 +117,8 @@ class RegistrarUsuarioUseCaseMapperTest {
 
         StepVerifier.create(useCase.registrar(req))
                 .expectErrorSatisfies(ex -> {
-                    assertThat(ex).isInstanceOf(IllegalArgumentException.class);
-                    assertThat(ex.getMessage()).containsIgnoringCase("correo");
+                assertThat(ex).isInstanceOf(EmailAlreadyExistsException.class);
+                // assertThat(ex.getMessage()).containsIgnoringCase("registrado"); // opcional, robusto
                 })
                 .verify();
 

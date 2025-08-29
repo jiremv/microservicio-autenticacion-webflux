@@ -11,7 +11,7 @@ FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app
 
 # Copia el JAR generado al contenedor
-COPY target/security-0.0.1-SNAPSHOT.jar app.jar
+COPY target/autenticacion-0.0.1-SNAPSHOT.jar app.jar
 
 # Exponemos el puerto que usará Spring Boot (si usas otro, cambia aquí)
 EXPOSE 8080
