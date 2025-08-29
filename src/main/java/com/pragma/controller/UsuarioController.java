@@ -25,39 +25,5 @@ public class UsuarioController {
                         .created(URI.create("/api/v1/usuarios/" + resp.getId()))
                         .body(resp));
     }
-    /*@PostMapping
-    public Mono<ResponseEntity<UsuarioResponse>> crear(@Valid @RequestBody UsuarioRequest req) {
-        log.info("[UsuarioController] POST /api/v1/usuarios email={}", req.getCorreoElectronico());
-        // Mapeo DTO -> entidad
-        User entity = User.builder()
-                .nombres(req.getNombres())
-                .apellidos(req.getApellidos())
-                .fechaNacimiento(req.getFechaNacimiento())
-                .direccion(req.getDireccion())
-                .telefono(req.getTelefono())
-                .correoElectronico(req.getCorreoElectronico())
-                .salarioBase(req.getSalarioBase())
-                .password(req.getPassword()) // si vino, se hashea en el use case
-                .build();
 
-        return useCase.ejecutar(entity)
-                .map(saved -> {
-                    UsuarioResponse r = new UsuarioResponse();
-                    r.setId(saved.getId());
-                    r.setNombres(saved.getNombres());
-                    r.setApellidos(saved.getApellidos());
-                    r.setFechaNacimiento(saved.getFechaNacimiento());
-                    r.setDireccion(saved.getDireccion());
-                    r.setTelefono(saved.getTelefono());
-                    r.setCorreoElectronico(saved.getCorreoElectronico());
-                    r.setSalarioBase(saved.getSalarioBase());
-                    r.setRol(saved.getRol() != null ? saved.getRol().name() : null);
-                    r.setEstado(saved.getEstado());
-                    r.setFechaCreacion(saved.getFechaCreacion());
-
-                    return ResponseEntity
-                            .created(URI.create("/api/v1/usuarios/" + saved.getId()))
-                            .body(r);
-                });
-    }*/
 }
