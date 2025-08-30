@@ -13,11 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -80,7 +78,6 @@ public class RegistrarUsuarioUseCase {
                 .map(this::toResponse)
                 .as(tx::transactional);
     }
-
     private UsuarioResponse toResponse(User u) {
         return UsuarioResponse.builder()
                 .id(u.getId())

@@ -2,207 +2,218 @@ package com.pragma.error;
 
 import com.pragma.domain.exception.EmailAlreadyExistsException;
 import jakarta.validation.ConstraintViolationException;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
-import org.springframework.dao.DataAccessException;
-import org.springframework.http.HttpStatus;
-import org.springframework.r2dbc.BadSqlGrammarException;
-import org.springframework.web.ErrorResponseException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.bind.support.WebExchangeBindException;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.*;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import java.net.URI;
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-@Slf4j
-@RestControllerAdvice
-@Order(0)
-public class GlobalExceptionHandler {
+import java.time.OffsetDateTime;
+import java.util.*;
 
-    @ExceptionHandler(WebExchangeBindException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Mono<ErrorResponse> handleBind(WebExchangeBindException ex) {
-        String errorId = UUID.randomUUID().toString();
-        var details = ex.getFieldErrors().stream()
-                .map(fe -> new ValidationError(fe.getField(), fe.getDefaultMessage()))
-                .toList();
-        log.warn("[{}] Validation error: {}", errorId, details);
-        return Mono.just(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(),
-                "Datos inválidos", details, errorId));
-    }
+@RestControllerAdvice
+@Order(-2) // que se ejecute antes que handlers por defecto
+public class GlobalExceptionHandler {
+    private static final MediaType PROBLEM_JSON = MediaType.valueOf("application/problem+json");
     @ExceptionHandler(EmailAlreadyExistsException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public Mono<ErrorResponse> handleEmailAlreadyExists(EmailAlreadyExistsException ex) {
-        String errorId = UUID.randomUUID().toString();
-        String field = (ex.getField() == null || ex.getField().isBlank()) ? "email" : ex.getField();
-
-        var details = List.of(new ValidationError(field, "ya existe"));
-
-        log.warn("[{}] Conflict: {} (field={})", errorId, ex.getMessage(), field);
-
-        return Mono.just(ErrorResponse.of(
-                HttpStatus.CONFLICT.value(),
-                ex.getMessage(),
-                details,
-                errorId
-        ));
-    }
-    @ExceptionHandler(ConstraintViolationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Mono<ErrorResponse> handleConstraint(ConstraintViolationException ex) {
-        String errorId = UUID.randomUUID().toString();
-        var details = ex.getConstraintViolations().stream()
-                .map(v -> new ValidationError(v.getPropertyPath().toString(), v.getMessage()))
-                .toList();
-        log.warn("[{}] Constraint violation: {}", errorId, details);
-        return Mono.just(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(),
-                "Datos inválidos", details, errorId));
+    public ProblemDetail handleDuplicateEmail(EmailAlreadyExistsException ex, ServerWebExchange exchange) {
+        var pd = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                "El correo electrónico ya está registrado"
+        );
+        // Lo que espera el test:
+        pd.setTitle("Conflicto: recurso ya existe");
+        pd.setType(URI.create("https://tu-dominio.com/probs/duplicate-email"));
+        pd.setProperty("code", AppErrorCode.DUPLICATE_EMAIL.name());
+        // Usa el nombre del campo que valida el test
+        pd.setProperty("errors", List.of(Map.of(
+                "field", "correoElectronico",
+                "message", "ya existe",
+                "rejectedValue", ex.getCorreo()
+        )));
+        attachCommon(exchange, pd); // agrega errorId, timestamp, instance y header
+        return pd;
     }
 
-    @ExceptionHandler({DuplicateKeyException.class, R2dbcDataIntegrityViolationException.class})
+    /*@ExceptionHandler(CorreoDuplicadoException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public Mono<ErrorResponse> handleDuplicate(Exception ex) {
-        String errorId = UUID.randomUUID().toString();
-        log.warn("[{}] Duplicate/conflict: {}", errorId, ex.getMessage());
-        return Mono.just(ErrorResponse.of(HttpStatus.CONFLICT.value(),
-                "Conflicto de datos", List.of(new ValidationError("global", "Registro duplicado o restricción de unicidad")),
-                errorId));
+    public ProblemDetail handleDuplicateEmail(CorreoDuplicadoException ex, ServerWebExchange exchange) {
+        var pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "El correo electrónico ya está registrado");
+        pd.setTitle("Conflicto de datos");
+        pd.setType(URI.create("https://tu-dominio.com/probs/duplicate-email"));
+        pd.setProperty("code", "DUPLICATE_EMAIL");
+
+        // detalle de campo (opcional pero útil)
+        pd.setProperty("errors", List.of(Map.of(
+                "field", "email",
+                "message", "ya existe",
+                "rejectedValue", ex.getCorreo()
+        )));
+
+        attachCommon(exchange, pd); // tu helper que agrega errorId, timestamp, instance y header
+        return pd;
+    }*/
+
+    // 409 - Email duplicado
+    /*@ExceptionHandler(CorreoDuplicadoException.class)
+    public Mono<ResponseEntity<ProblemDetail>> handleCorreoDuplicado(
+            CorreoDuplicadoException ex, ServerWebExchange exchange) {
+
+        var pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        pd.setTitle("Conflicto: recurso ya existe");
+        pd.setType(URI.create("https://tu-dominio.com/probs/email-exists"));
+        pd.setInstance(URI.create(exchange.getRequest().getPath().value()));
+        pd.setProperty("timestamp", OffsetDateTime.now().toString());
+        pd.setProperty("code", AppErrorCode.DUPLICATE_EMAIL.name());
+        pd.setProperty("errors", List.of(Map.of(
+                "field", "correoElectronico",
+                "message", "ya existe"
+        )));
+        // (Opcional) pista del recurso en conflicto:
+        if (ex.getExistenteId() != null) {
+            pd.setProperty("conflictResource", "/api/v1/usuarios/" + ex.getExistenteId());
+        }
+
+        var errorId = ex.getErrorId() != null ? ex.getErrorId() : UUID.randomUUID().toString();
+
+        return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT)
+                .header("X-Error-Id", errorId)
+                .contentType(PROBLEM_JSON)
+                .body(pd));
     }
 
-    @ExceptionHandler({BadSqlGrammarException.class, DataAccessException.class})
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public Mono<ErrorResponse> handleDataAccess(Exception ex) {
-        String errorId = UUID.randomUUID().toString();
-        log.error("[{}] Data access error", errorId, ex);
-        return Mono.just(ErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Error interno de base de datos", List.of(), errorId));
+
+    // 409 por clave única duplicada vía DB
+    @ExceptionHandler({
+            org.springframework.dao.DuplicateKeyException.class,
+            org.springframework.dao.DataIntegrityViolationException.class,
+            io.r2dbc.spi.R2dbcDataIntegrityViolationException.class
+    })
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ProblemDetail handleDbDuplicate(RuntimeException ex, ServerWebExchange exchange) {
+        var pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "El correo electrónico ya está registrado");
+        pd.setType(URI.create("https://tu-dominio.com/probs/duplicate-email"));
+        pd.setTitle("Conflicto de datos");
+        pd.setProperty("code", "DUPLICATE_EMAIL");
+        attachCommon(exchange, pd);
+        return pd;
+    }*/
+
+    // 400 - Errores de validación @Valid (WebFlux)
+    @ExceptionHandler(WebExchangeBindException.class)
+    public Mono<ResponseEntity<ProblemDetail>> handleValidation(WebExchangeBindException ex,
+                                                                ServerWebExchange exchange) {
+        var pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "El cuerpo de la solicitud tiene errores de validación.");
+        pd.setTitle("Solicitud inválida");
+        pd.setType(URI.create("https://tu-dominio.com/probs/constraint-violation"));
+        pd.setInstance(URI.create(exchange.getRequest().getPath().value()));
+        pd.setProperty("timestamp", OffsetDateTime.now().toString());
+        pd.setProperty("code", AppErrorCode.VALIDATION_ERROR.name());
+
+        var errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(this::toError)
+                .toList();
+        pd.setProperty("errors", errors);
+
+        return Mono.just(ResponseEntity.badRequest()
+                .contentType(PROBLEM_JSON)
+                .body(pd));
     }
 
+    // 400 - Validaciones imperativas (opcional)
+    @ExceptionHandler(ConstraintViolationException.class)
+    public Mono<ResponseEntity<ProblemDetail>> handleConstraintViolation(ConstraintViolationException ex,
+                                                                         ServerWebExchange exchange) {
+        var pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "La solicitud contiene valores inválidos.");
+        pd.setTitle("Solicitud inválida");
+        pd.setType(URI.create("https://tu-dominio.com/probs/constraint-violation"));
+        pd.setInstance(URI.create(exchange.getRequest().getPath().value()));
+        pd.setProperty("timestamp", OffsetDateTime.now().toString());
+        pd.setProperty("code", AppErrorCode.VALIDATION_ERROR.name());
+
+        var errors = ex.getConstraintViolations().stream()
+                .map(cv -> Map.of(
+                        "field", String.valueOf(cv.getPropertyPath()),
+                        "message", cv.getMessage(),
+                        "rejectedValue", Objects.toString(cv.getInvalidValue(), "null")
+                ))
+                .toList();
+        pd.setProperty("errors", errors);
+
+        return Mono.just(ResponseEntity.badRequest()
+                .contentType(PROBLEM_JSON)
+                .body(pd));
+    }
+
+    // 404 - Not found centralizado (si usas ResponseStatusException)
     @ExceptionHandler(ResponseStatusException.class)
-    public Mono<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
-        String errorId = UUID.randomUUID().toString();
-        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
-        if (status == null) status = HttpStatus.INTERNAL_SERVER_ERROR;
-        if (status.is5xxServerError()) {
-            log.error("[{}] {}", errorId, ex.getReason(), ex);
-        } else {
-            log.warn("[{}] {}", errorId, ex.getReason());
+    public Mono<ResponseEntity<ProblemDetail>> handleResponseStatus(ResponseStatusException ex,
+                                                                    ServerWebExchange exchange) {
+        if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+            var pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND,
+                    Optional.ofNullable(ex.getReason()).orElse("El recurso no existe."));
+            pd.setTitle("No encontrado");
+            pd.setType(URI.create("https://tu-dominio.com/probs/not-found"));
+            pd.setInstance(URI.create(exchange.getRequest().getPath().value()));
+            pd.setProperty("timestamp", OffsetDateTime.now().toString());
+            pd.setProperty("code", AppErrorCode.RESOURCE_NOT_FOUND.name());
+            return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(PROBLEM_JSON)
+                    .body(pd));
         }
-        return Mono.just(ErrorResponse.of(status.value(), ex.getReason(), List.of(), errorId));
+        return handleGeneric(ex, exchange);
     }
 
-    @ExceptionHandler(ErrorResponseException.class)
-    public Mono<ErrorResponse> handleErrorResponse(ErrorResponseException ex) {
-        String errorId = UUID.randomUUID().toString();
-        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
-        if (status == null) status = HttpStatus.INTERNAL_SERVER_ERROR;
-        log.error("[{}] {}", errorId, ex.getBody() != null ? ex.getBody().getDetail() : ex.getMessage(), ex);
-        return Mono.just(ErrorResponse.of(status.value(),
-                "Error procesando la solicitud", List.of(), errorId));
-    }
-
+    // 500 - Catch-all
     @ExceptionHandler(Throwable.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public Mono<ErrorResponse> handleGeneric(Throwable ex) {
+    public Mono<ResponseEntity<ProblemDetail>> handleGeneric(Throwable ex, ServerWebExchange exchange) {
+        var errorId = UUID.randomUUID().toString();
+
+        var pd = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Ocurrió un error inesperado.");
+        pd.setTitle("Error interno");
+        pd.setType(URI.create("https://tu-dominio.com/probs/internal-error"));
+        pd.setInstance(URI.create(exchange.getRequest().getPath().value()));
+        pd.setProperty("timestamp", OffsetDateTime.now().toString());
+        pd.setProperty("code", AppErrorCode.INTERNAL_ERROR.name());
+        pd.setProperty("errorId", errorId);
+
+        return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .header("X-Error-Id", errorId)
+                .contentType(PROBLEM_JSON)
+                .body(pd));
+    }
+    private Map<String, Object> toError(FieldError fe) {
+        var map = new LinkedHashMap<String, Object>();
+        map.put("field", fe.getField());
+        map.put("message", fe.getDefaultMessage());
+        map.put("rejectedValue", fe.getRejectedValue());
+        return map;
+    }
+    private void attachCommon(ServerWebExchange exchange, ProblemDetail pd) {
+        // id único para correlación
         String errorId = UUID.randomUUID().toString();
-        log.error("[{}] Unexpected error", errorId, ex);
-        return Mono.just(ErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Ocurrió un error inesperado", List.of(), errorId));
-    }
+        pd.setProperty("errorId", errorId);
+        pd.setProperty("timestamp", Instant.now().toString());
 
-    @Data
-    @AllArgsConstructor
-    public static class ValidationError {
-        private String field;
-        private String message;
-    }
+        // URL del request como "instance" (RFC 7807)
+        pd.setInstance(URI.create(exchange.getRequest().getPath().value()));
 
-    @Data
-    @AllArgsConstructor
-    public static class ErrorResponse {
-        private Instant timestamp;
-        private int status;
-        private String error;
-        private String errorId;
-        private List<ValidationError> details;
-
-        public static ErrorResponse of(int status, String error, List<ValidationError> details, String errorId) {
-            return new ErrorResponse(Instant.now(), status, error, errorId, details);
-        }
+        // también lo exponemos como header útil para logs/tracing
+        exchange.getResponse().getHeaders().add("X-Error-Id", errorId);
     }
 }
-/*@Slf4j
-@RestControllerAdvice
-public class GlobalExceptionHandler {
-
-    @ExceptionHandler(WebExchangeBindException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Mono<ErrorResponse> handleBind(WebExchangeBindException ex) {
-        List<ValidationError> errors = ex.getFieldErrors().stream()
-                .map(fe -> new ValidationError(fe.getField(), fe.getDefaultMessage()))
-                .toList();
-
-        return Mono.just(ErrorResponse.of(400, "Datos inválidos", errors));
-    }
-
-    @ExceptionHandler(ConstraintViolationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Mono<ErrorResponse> handleConstraint(ConstraintViolationException ex) {
-        List<ValidationError> errors = ex.getConstraintViolations().stream()
-                .map(v -> new ValidationError(v.getPropertyPath().toString(), v.getMessage()))
-                .toList();
-
-        return Mono.just(ErrorResponse.of(400, "Datos inválidos", errors));
-    }
-
-    // Asegúrate de tener esta excepción en tu proyecto o cámbiala por IllegalArgumentException
-    @ExceptionHandler(EmailAlreadyExistsException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public Mono<ErrorResponse> handleDuplicate(EmailAlreadyExistsException ex) {
-        return Mono.just(ErrorResponse.of(409, ex.getMessage(), null));
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Mono<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
-        return Mono.just(ErrorResponse.of(400, ex.getMessage(), null));
-    }
-
-    @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public Mono<ErrorResponse> handleGeneric(Exception ex) {
-        log.error("[Unhandled]", ex);
-        return Mono.just(ErrorResponse.of(
-                500,
-                "Ha ocurrido un error inesperado. Por favor intente nuevamente.",
-                null
-        ));
-    }
-
-    @Data
-    @AllArgsConstructor
-    public static class ValidationError {
-        private String field;
-        private String message;
-    }
-
-    @Data
-    @AllArgsConstructor
-    public static class ErrorResponse {
-        private Instant timestamp;
-        private int status;
-        private String error;
-        private List<ValidationError> details;
-
-        public static ErrorResponse of(int status, String error, List<ValidationError> details) {
-            return new ErrorResponse(Instant.now(), status, error, details);
-        }
-    }
-}*/

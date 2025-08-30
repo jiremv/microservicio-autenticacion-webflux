@@ -23,7 +23,6 @@ public class SecurityConfig {
     public SecurityConfig(
             @Qualifier("myReactiveUserDetailsService") ReactiveUserDetailsService userDetailsService
     ) {
-        //this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
     }
 
@@ -31,9 +30,7 @@ public class SecurityConfig {
      * Cadena de filtros de seguridad.
      */
     @Bean
-    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http
-            //,JwtAuthenticationWebFilter jwtAuthFilter
-    ) {
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
