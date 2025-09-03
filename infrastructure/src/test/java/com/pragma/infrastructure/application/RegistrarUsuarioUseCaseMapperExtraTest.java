@@ -70,7 +70,7 @@ class RegistrarUsuarioUseCaseMapperExtraTest {
                 .correoElectronico(req.getCorreoElectronico())
                 .salarioBase(req.getSalarioBase())
                 .password("HASH")
-                .rol(Role.USER)
+                .rol(Role.CLIENTE)
                 .estado(true)
                 .fechaCreacion(LocalDateTime.now())
                 .build();

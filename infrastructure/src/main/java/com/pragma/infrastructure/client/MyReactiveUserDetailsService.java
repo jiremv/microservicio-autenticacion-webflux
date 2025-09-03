@@ -20,7 +20,7 @@ public class MyReactiveUserDetailsService implements ReactiveUserDetailsService 
                         .withUsername(user.getCorreoElectronico())
                         .password(user.getPassword())
                         .authorities(user.getRol().name()) // necesito mapear el rol a String
-                        ///.roles(user.getRol().name()) // rol debe ser una cadena como 'ADMIN' o 'USER'
+                        .roles(user.getRol().name())  // crea ROLE_* ; rol debe ser una cadena como 'ADMIN' o 'USER'
                         .build());
     }
 }

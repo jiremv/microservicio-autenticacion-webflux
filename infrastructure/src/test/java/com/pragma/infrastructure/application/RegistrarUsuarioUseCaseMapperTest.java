@@ -78,7 +78,7 @@ class RegistrarUsuarioUseCaseMapperTest {
                 .correoElectronico(req.getCorreoElectronico())
                 .salarioBase(req.getSalarioBase())
                 .password("HASHED")
-                .rol(Role.USER)                 // default aplicado en registrar(User)
+                .rol(Role.CLIENTE)                 // default aplicado en registrar(User)
                 .estado(true)                   // default aplicado en registrar(User)
                 .fechaCreacion(LocalDateTime.now())
                 .build();
@@ -104,7 +104,7 @@ class RegistrarUsuarioUseCaseMapperTest {
         verify(passwordEncoder).encode("secreto");
         verify(userRepository).findByCorreoElectronico(req.getCorreoElectronico());
         assertThat(persisted.getPassword()).isEqualTo("HASHED");
-        assertThat(persisted.getRol()).isEqualTo(Role.USER);
+        assertThat(persisted.getRol()).isEqualTo(Role.CLIENTE);
         assertThat(persisted.getEstado()).isTrue();
         assertThat(persisted.getFechaCreacion()).isNotNull();
     }

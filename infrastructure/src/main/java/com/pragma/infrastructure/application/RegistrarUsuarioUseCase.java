@@ -65,7 +65,7 @@ public class RegistrarUsuarioUseCase {
                                                 .correoElectronico(email)
                                                 .salarioBase(req.getSalarioBase())
                                                 .password(hash)
-                                                .rol(Role.USER)
+                                                .rol(Role.CLIENTE)
                                                 .estado(Boolean.TRUE)
                                                 .fechaCreacion(LocalDateTime.now())
                                                 .build()

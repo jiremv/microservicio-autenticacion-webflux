@@ -2,7 +2,9 @@ package com.pragma.infrastructure.web.handler;
 
 import com.pragma.domain.exception.AppErrorCode;
 import com.pragma.domain.exception.EmailAlreadyExistsException;
+import io.jsonwebtoken.JwtException;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.*;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,6 +25,7 @@ import java.util.*;
 
 @RestControllerAdvice
 @Order(-2) // que se ejecute antes que handlers por defecto
+@Slf4j
 public class GlobalExceptionHandler {
     private static final MediaType PROBLEM_JSON = MediaType.valueOf("application/problem+json");
     @ExceptionHandler(EmailAlreadyExistsException.class)
@@ -117,7 +120,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Throwable.class)
     public Mono<ResponseEntity<ProblemDetail>> handleGeneric(Throwable ex, ServerWebExchange exchange) {
         var errorId = UUID.randomUUID().toString();
-
+        log.error("Unhandled error {} {} (errorId={})",
+                exchange.getRequest().getMethod(),
+                exchange.getRequest().getPath(), errorId, ex);
         var pd = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
                 "Ocurrió un error inesperado.");
         pd.setTitle("Error interno");
@@ -151,4 +156,45 @@ public class GlobalExceptionHandler {
         // también lo exponemos como header útil para logs/tracing
         exchange.getResponse().getHeaders().add("X-Error-Id", errorId);
     }
+
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ProblemDetail handleBadCreds(org.springframework.security.authentication.BadCredentialsException ex,
+                                        ServerWebExchange exchange) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        pd.setTitle("No autorizado");
+        pd.setType(URI.create("https://tu-dominio.com/probs/bad-credentials"));
+        attachCommon(exchange, pd);
+        return pd;
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex,
+                                               ServerWebExchange exchange) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        pd.setTitle("No autorizado");
+        pd.setType(URI.create("https://tu-dominio.com/probs/bad-credentials"));
+        attachCommon(exchange, pd);
+        return pd;
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ProblemDetail handleDenied(org.springframework.security.access.AccessDeniedException ex,
+                                      ServerWebExchange exchange) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Acceso denegado");
+        pd.setTitle("Prohibido");
+        pd.setType(URI.create("https://tu-dominio.com/probs/access-denied"));
+        attachCommon(exchange, pd);
+        return pd;
+    }
+
+    @ExceptionHandler(JwtException.class)
+    public ProblemDetail handleJwt(JwtException ex, ServerWebExchange exchange) {
+        // firma inválida, token malformado, expirado, etc.
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Token inválido");
+        pd.setTitle("No autorizado");
+        pd.setType(URI.create("https://tu-dominio.com/probs/invalid-jwt"));
+        attachCommon(exchange, pd);
+        return pd;
+    }
+
 }
